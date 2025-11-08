@@ -1,0 +1,67 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-09 00:26:28.198572",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "pull_frequency",
+  "devices",
+  "last_status",
+  "shift_type_device_mapping"
+ ],
+ "fields": [
+  {
+   "default": "60",
+   "description": "In Minutes",
+   "fieldname": "pull_frequency",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Pull Frequency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "devices",
+   "fieldtype": "Table",
+   "label": "Devices",
+   "options": "ZKT Devices"
+  },
+  {
+   "default": "{}",
+   "fieldname": "last_status",
+   "fieldtype": "JSON",
+   "label": "Status"
+  },
+  {
+   "default": "{}",
+   "fieldname": "shift_type_device_mapping",
+   "fieldtype": "JSON",
+   "label": "Shift Type Device Mapping"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-11-09 03:05:35.292977",
+ "modified_by": "Administrator",
+ "module": "ZKT Biometrix Integration",
+ "name": "ZKT Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
