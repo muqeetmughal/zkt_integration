@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestZKTSettings(FrappeTestCase):
+class TestAttendanceDeviceLog(FrappeTestCase):
 	pass

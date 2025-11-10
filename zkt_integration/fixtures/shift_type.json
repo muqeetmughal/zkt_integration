@@ -1,6 +1,7 @@
 [
  {
   "allow_check_out_after_shift_end_time": 60,
+  "allow_overtime": 0,
   "auto_update_last_sync": 0,
   "begin_check_in_before_shift_start_time": 60,
   "color": "Blue",
@@ -18,6 +19,7 @@
   "mark_auto_attendance_on_holidays": 0,
   "modified": "2025-11-08 22:37:26.862181",
   "name": "Standard Office Shift",
+  "overtime_type": null,
   "process_attendance_after": "2025-11-08",
   "start_time": "12:00:00",
   "working_hours_calculation_based_on": "First Check-in and Last Check-out",

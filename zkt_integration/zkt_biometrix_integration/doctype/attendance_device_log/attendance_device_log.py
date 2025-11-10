@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class ZKTDevices(Document):
+class AttendanceDeviceLog(Document):
 	pass
