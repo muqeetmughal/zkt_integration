@@ -246,6 +246,8 @@ required_apps = ["frappe/hrms"]
 fixtures = [
     {"dt": "ZKT Settings"
      },
+     {"dt": "Shift Type"
+     },
 
     #  {"dt": "Property Setter", "filters": [
     #     [
