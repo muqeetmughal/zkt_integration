@@ -242,3 +242,26 @@ required_apps = ["frappe/hrms"]
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+
+fixtures = [
+    {"dt": "ZKT Settings"
+     },
+
+    #  {"dt": "Property Setter", "filters": [
+    #     [
+    #         "doc_type", "in", [
+    #             "Patient",
+    #             "Healthcare Practitioner" ,
+	# 			"Healthcare Service Unit" ,
+    #             "Practitioner Schedule",
+    #             "Practitioner Service Unit Schedule" ,
+    #             "Patient Encounter" ,
+    #             "Clinical Procedure",
+    #             "Vital Signs",
+    #             "Complaint",
+    #             "Patient Relation"
+
+    #         ]
+    #     ]
+    # ]},
+]

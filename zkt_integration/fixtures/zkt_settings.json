@@ -1,0 +1,24 @@
+[
+ {
+  "devices": [
+   {
+    "clear_from_device_on_fetch": 1,
+    "device_id": "k40",
+    "ip": "192.168.100.197",
+    "latitude": 31.4926522,
+    "longitude": 74.3732663,
+    "parent": "ZKT Settings",
+    "parentfield": "devices",
+    "parenttype": "ZKT Settings",
+    "punch_direction": "AUTO"
+   }
+  ],
+  "docstatus": 0,
+  "doctype": "ZKT Settings",
+  "last_status": "{\"k40_pull_timestamp\": \"2025-11-09 04:06:49.411001\", \"Standard Office Shift_sync_timestamp\": \"2025-11-09 04:06:49.667910\", \"mission_accomplished_timestamp\": \"2025-11-09 04:06:49.668304\", \"lift_off_timestamp\": \"2025-11-09 04:06:49.275721\"}",
+  "modified": "2025-11-09 04:06:49.671753",
+  "name": "ZKT Settings",
+  "pull_frequency": 0,
+  "shift_type_device_mapping": "[\n    {\"shift_type_name\": \"Standard Office Shift\", \"related_device_id\": [\"k40\"]}\n]"
+ }
+]
