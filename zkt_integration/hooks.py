@@ -9,6 +9,14 @@ app_license = "mit"
 # ------------------
 
 required_apps = ["frappe/hrms"]
+scheduler_events = {
+    "cron": {  # every 5 minutes
+        "*/5 * * * *": [
+            "zkt_integration.zkt_biometrix_integration.doctype.zkt_settings.zkt_settings.sync_attendance_log_to_erpnext"
+        ]
+    }
+}
+
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [

@@ -16,6 +16,17 @@ def get_zkt_settings():
 	zkt_settings = frappe.get_doc("ZKT Settings")
 	return zkt_settings
 
+# @frappe.whitelist()
+# def clear_attendance_from_device(device_id):
+# 	zkt_settings = frappe.get_doc("ZKT Settings")
+# 	attendance_service = AttendanceSyncService(
+# 		devices=zkt_settings.get("devices") or [],
+# 		shift_type_device_mapping=zkt_settings.get("shift_type_device_mapping") or [],
+# 		pull_frequency=zkt_settings.get("pull_frequency"),
+# 	)
+# 	attendance_service.clear_attendance_from_machine(next((d for d in attendance_service.devices if d.device_id == device_id), None))
+	
+
 @frappe.whitelist()
 def sync_attendance_log_to_erpnext():
 	zkt_settings = frappe.get_doc("ZKT Settings")
