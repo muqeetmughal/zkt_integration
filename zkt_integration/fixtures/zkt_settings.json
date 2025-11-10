@@ -2,9 +2,9 @@
  {
   "devices": [
    {
-    "clear_from_device_on_fetch": 1,
+    "clear_from_device_on_fetch": 0,
     "device_id": "k40",
-    "ip": "192.168.100.197",
+    "ip": "http://localhost:8000",
     "latitude": 31.4926522,
     "longitude": 74.3732663,
     "parent": "ZKT Settings",
@@ -15,8 +15,8 @@
   ],
   "docstatus": 0,
   "doctype": "ZKT Settings",
-  "last_status": "{\"k40_pull_timestamp\": \"2025-11-09 04:06:49.411001\", \"Standard Office Shift_sync_timestamp\": \"2025-11-09 04:06:49.667910\", \"mission_accomplished_timestamp\": \"2025-11-09 04:06:49.668304\", \"lift_off_timestamp\": \"2025-11-09 04:06:49.275721\"}",
-  "modified": "2025-11-09 04:06:49.671753",
+  "last_status": "{\"k40_pull_timestamp\": \"2025-11-10 22:27:32.172523\", \"Standard Office Shift_sync_timestamp\": \"2025-11-10 22:27:32.315666\", \"mission_accomplished_timestamp\": \"2025-11-10 22:27:32.315907\", \"lift_off_timestamp\": \"2025-11-10 22:27:31.900980\"}",
+  "modified": "2025-11-10 22:27:32.323965",
   "name": "ZKT Settings",
   "pull_frequency": 0,
   "shift_type_device_mapping": "[\n    {\"shift_type_name\": \"Standard Office Shift\", \"related_device_id\": [\"k40\"]}\n]"

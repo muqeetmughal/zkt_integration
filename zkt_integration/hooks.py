@@ -246,15 +246,16 @@ required_apps = ["frappe/hrms"]
 fixtures = [
     {"dt": "ZKT Settings"
      },
-     {"dt": "Shift Type"
+    {"dt": "Shift Type"
      },
+    {"dt": "Server Script"},
 
     #  {"dt": "Property Setter", "filters": [
     #     [
     #         "doc_type", "in", [
     #             "Patient",
     #             "Healthcare Practitioner" ,
-	# 			"Healthcare Service Unit" ,
+    # 			"Healthcare Service Unit" ,
     #             "Practitioner Schedule",
     #             "Practitioner Service Unit Schedule" ,
     #             "Patient Encounter" ,
