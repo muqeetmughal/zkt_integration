@@ -4,7 +4,7 @@
    {
     "clear_from_device_on_fetch": 0,
     "device_id": "k40",
-    "ip": "182.176.165.88",
+    "ip": "http://localhost:8000",
     "latitude": 31.4926522,
     "longitude": 74.3732663,
     "parent": "ZKT Settings",
