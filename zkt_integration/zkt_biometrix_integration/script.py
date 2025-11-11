@@ -118,7 +118,7 @@ class AttendanceSyncService:
     # ---------------- DEVICE FETCH ---------------- #
 
     def _fetch_from_device(self, device):
-        zk = ZK(device.ip, port=4370, timeout=30)
+        zk = ZK(device.ip, port=4370, password=device.password, timeout=30)
         conn = None
         logs = []
 

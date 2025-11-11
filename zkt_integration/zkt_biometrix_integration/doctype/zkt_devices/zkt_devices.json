@@ -8,6 +8,7 @@
  "field_order": [
   "device_id",
   "ip",
+  "device_password",
   "punch_direction",
   "clear_from_device_on_fetch",
   "latitude",
@@ -55,13 +56,19 @@
    "fieldtype": "Float",
    "label": "Longitude",
    "precision": "7"
+  },
+  {
+   "fieldname": "device_password",
+   "fieldtype": "Password",
+   "in_list_view": 1,
+   "label": "Device Password"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-09 02:16:23.934299",
+ "modified": "2025-11-11 17:58:56.984730",
  "modified_by": "Administrator",
  "module": "ZKT Biometrix Integration",
  "name": "ZKT Devices",
