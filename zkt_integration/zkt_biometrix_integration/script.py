@@ -9,7 +9,7 @@ import frappe
 
 
 class AttendanceSyncService:
-
+    
     # ---------------- CONFIGS (INLINE INSTEAD OF local_config) ---------------- #
 
     ERPNEXT_VERSION = 15
@@ -50,7 +50,6 @@ class AttendanceSyncService:
         #     os.makedirs(self.LOGS_DIRECTORY)
         # self.status = PickleDB(f"{self.LOGS_DIRECTORY}/status.json")
         # self.status = json.loads(last_status)   or {}
-
         self.shift_type_device_mapping = json.loads(
             shift_type_device_mapping) or []
         self.devices = devices or []
@@ -118,7 +117,8 @@ class AttendanceSyncService:
     # ---------------- DEVICE FETCH ---------------- #
 
     def _fetch_from_device(self, device):
-        zk = ZK(device.ip, port=4370, password=device.password, timeout=30)
+    
+        zk = ZK(device.ip, port=4370, password=device.get_password("device_password"), timeout=30)
         conn = None
         logs = []
 
@@ -140,7 +140,7 @@ class AttendanceSyncService:
             conn.enable_device()
 
         except Exception as e:
-            self.create_log("ERROR fetching from device:", device.ip, str(e))
+            self.create_log("ERROR fetching from device:" + device.ip + " " + str(e))
         finally:
             if conn:
                 conn.disconnect()
