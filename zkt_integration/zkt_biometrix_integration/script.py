@@ -23,7 +23,9 @@ class AttendanceSyncService:
         if last_run:
             print("Calculating delta since last run...")
             delta = (datetime.datetime.now() - last_run).total_seconds() / 60
-            print("Delta (minutes):", delta)
+            print("Delta (minutes):", delta, self.pull_frequency)
+
+
             if delta < self.pull_frequency:
                 print("Skipping run; pull frequency not met.")
                 return
@@ -298,3 +300,20 @@ def sync_attendance_log_to_erpnext():
 
 
     service.run()
+
+@frappe.whitelist()
+def clear_device_logs(device_id):
+    settings = frappe.get_doc("ZKT Settings")
+    device = None
+    for d in settings.get("devices") or []:
+        if d.device_id == device_id:
+            device = d
+            break
+    if not device:
+        frappe.throw(f"Device not found: {device_id}")
+
+    service = AttendanceSyncService(
+        devices=[device],
+        pull_frequency=settings.get("pull_frequency") or 15,
+    )
+    service._clear_device(device)
