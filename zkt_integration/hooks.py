@@ -83,7 +83,7 @@ required_apps = ["frappe/hrms"]
 # ------------
 
 # before_install = "zkt_integration.install.before_install"
-# after_install = "zkt_integration.install.after_install"
+after_install = "zkt_integration.install.after_install"
 
 # Uninstallation
 # ------------
@@ -244,27 +244,11 @@ required_apps = ["frappe/hrms"]
 
 
 fixtures = [
-    # {"dt": "ZKT Settings"
-    #  },
-    {"dt": "Shift Type"
-     },
-    {"dt": "Server Script"},
 
-    #  {"dt": "Property Setter", "filters": [
-    #     [
-    #         "doc_type", "in", [
-    #             "Patient",
-    #             "Healthcare Practitioner" ,
-    # 			"Healthcare Service Unit" ,
-    #             "Practitioner Schedule",
-    #             "Practitioner Service Unit Schedule" ,
-    #             "Patient Encounter" ,
-    #             "Clinical Procedure",
-    #             "Vital Signs",
-    #             "Complaint",
-    #             "Patient Relation"
-
-    #         ]
-    #     ]
-    # ]},
+  
+    {"dt": "Server Script", "filters": [
+        ["module", "in", [
+            "ZKT Biometrix Integration"
+        ]]
+    ]},
 ]
