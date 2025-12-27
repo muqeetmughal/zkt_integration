@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-26 17:04:58.763717",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "device_id",
+  "user_id",
+  "timestamp",
+  "punch",
+  "raw_json",
+  "synced",
+  "retry_count",
+  "last_attempt_at",
+  "last_error"
+ ],
+ "fields": [
+  {
+   "fieldname": "device_id",
+   "fieldtype": "Data",
+   "label": "Device ID"
+  },
+  {
+   "fieldname": "user_id",
+   "fieldtype": "Data",
+   "label": "User ID"
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "label": "Timestamp"
+  },
+  {
+   "fieldname": "punch",
+   "fieldtype": "Int",
+   "label": "Punch"
+  },
+  {
+   "fieldname": "raw_json",
+   "fieldtype": "JSON",
+   "label": "Raw JSON"
+  },
+  {
+   "default": "0",
+   "fieldname": "synced",
+   "fieldtype": "Check",
+   "label": "Synced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "retry_count",
+   "fieldtype": "Int",
+   "label": "Retry Count"
+  },
+  {
+   "fieldname": "last_attempt_at",
+   "fieldtype": "Datetime",
+   "label": "Last Attempt At"
+  },
+  {
+   "fieldname": "last_error",
+   "fieldtype": "Long Text",
+   "label": "Error Message"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-27 15:48:24.893442",
+ "modified_by": "Administrator",
+ "module": "ZKT Biometrix Integration",
+ "name": "ZK Raw Attendance",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

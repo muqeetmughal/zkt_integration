@@ -55,3 +55,10 @@ def sync_attendance_log_to_erpnext():
 
 	print("Setting last status to:", new_status)
 	frappe.db.set_value("ZKT Settings", zkt_settings.name, "last_status", json.dumps(new_status))
+
+
+def clear_logs():
+	frappe.db.delete("Attendance Device Log")
+	frappe.db.commit()
+
+

@@ -1,245 +1,300 @@
-import requests
-import datetime
 import json
-import os
-import time
-# from pickledb import PickleDB
-from zk import ZK
+import datetime
 import frappe
+from zk import ZK
 
 
 class AttendanceSyncService:
-    
-    # ---------------- CONFIGS (INLINE INSTEAD OF local_config) ---------------- #
 
-    ERPNEXT_VERSION = 15
-
-    # PULL_FREQUENCY = 0
-    # LOGS_DIRECTORY = 'logs'
-    IMPORT_START_DATE = None
-
-    # devices = [
-    #     {'device_id': 'k40', 'ip': '192.168.100.197', 'punch_direction': 'AUTO', 'clear_from_device_on_fetch': False,
-    #      'latitude': 31.4926522, 'longitude': 74.3732663}
-    # ]
-
-    # shift_type_device_mapping = [
-    #     {'shift_type_name': 'Standard Office Shift', 'related_device_id': ['k40']}
-    # ]
-
-    allowlisted_errors = [
-        "No Employee found for the given employee field value",
-        "Transactions cannot be created for an Inactive Employee",
-        "This employee already has a log with the same timestamp"
-    ]
-
-    def create_log(self, text):
-        print(text)
-        current_time = datetime.datetime.now()
-        doc = frappe.new_doc("Attendance Device Log")
-        doc.log_entry = text
-        doc.log_time = current_time
-        doc.insert(ignore_permissions=True)
-
-    # ---------------- INITIALIZER ---------------- #
-
-    def __init__(self, devices, shift_type_device_mapping, pull_frequency=15):
-        # for device in devices:
-        #     print(device.device_id,device.ip, device.punch_direction, device.clear_from_device_on_fetch, device.latitude, device.longitude)
-        # if not os.path.exists(self.LOGS_DIRECTORY):
-        #     os.makedirs(self.LOGS_DIRECTORY)
-        # self.status = PickleDB(f"{self.LOGS_DIRECTORY}/status.json")
-        # self.status = json.loads(last_status)   or {}
-        self.shift_type_device_mapping = json.loads(
-            shift_type_device_mapping) or []
+    def __init__(self, devices, pull_frequency=15):
         self.devices = devices or []
-        self.PULL_FREQUENCY = pull_frequency
+        self.pull_frequency = pull_frequency
+        self.device_punch_in = [0, 4]
+        self.device_punch_out = [1, 5]
 
-        self.device_punch_values_IN = [0, 4]
-        self.device_punch_values_OUT = [1, 5]
+    # ------------------------------------------------------------------
+    # ENTRY POINT
+    # ------------------------------------------------------------------
+    def run(self):
+        last_run = frappe.cache.get_value("attendance_last_run")
 
-        self.create_log("Initialized AttendanceSyncService with devices:"+ str(self.devices) + "\n" + 
-        "Initialized AttendanceSyncService with pull frequency:"+str(self.PULL_FREQUENCY) + " minutes" + "\n" + 
-        "Initialized AttendanceSyncService with shift type device mapping:"+str(self.shift_type_device_mapping) + "\n")
+        print("Last run:", last_run)
 
-    # ---------------- MAIN LOOP ---------------- #
-    def run_once(self):
+        if last_run:
+            print("Calculating delta since last run...")
+            delta = (datetime.datetime.now() - last_run).total_seconds() / 60
+            print("Delta (minutes):", delta)
+            if delta < self.pull_frequency:
+                print("Skipping run; pull frequency not met.")
+                return
 
-        try:
-            last_lift_off = self._safe_date(
-                frappe.cache.get_value('lift_off_timestamp'))
+        for device in self.devices:
+            print("Processing device:", device.device_id)
+            self._process_device(device)
+        # 🔁 Retry failed records
+        self.retry_unsynced_records()
+        frappe.cache.set_value("attendance_last_run", datetime.datetime.now())
 
-            self.create_log("Last Lift Off:"+str(last_lift_off)+"\n"+
-            "Current Time:"+ str(datetime.datetime.now())+ "\n"+ 
-            "Pull Frequency (minutes):"+ str(self.PULL_FREQUENCY))
-
-            if (not last_lift_off) or (last_lift_off < datetime.datetime.now() - datetime.timedelta(minutes=self.PULL_FREQUENCY)):
-                self.create_log("\n--- Starting Pull Cycle ---")
-                frappe.cache.set_value(
-                    'lift_off_timestamp', str(datetime.datetime.now()))
-
-                for device in self.devices:
-                    self.create_log(
-                        f"Processing Device: {device.device_id} ({device.ip})")
-                    self._pull_process_push(device)
-
-                self._update_shift_sync()
-
-                frappe.cache.set_value(
-                    'mission_accomplished_timestamp', str(datetime.datetime.now()))
-                self.create_log("--- Cycle Complete ---\n")
-
-        except Exception as e:
-            self.create_log("ERROR in main:"+ str(e))
-
-    # ---------------- PULL + PROCESS + PUSH ---------------- #
-
-    def _pull_process_push(self, device):
+    # ------------------------------------------------------------------
+    # DEVICE PIPELINE
+    # ------------------------------------------------------------------
+    def _process_device(self, device):
         logs = self._fetch_from_device(device)
+        print("Fetched logs:", len(logs))
+
+        if not logs:
+            return
+
+        total_logs = len(logs)
+        synced_count = 0
 
         for log in logs:
-            punch_dir = self._determine_direction(device, log['punch'])
+            # Always store raw (idempotent)
+            self._store_raw_log(device, log)
 
-            code, msg = self._send_to_erpnext(log['user_id'], log['timestamp'], device.device_id, punch_dir,
-                                              device.latitude, device.longitude)
+            # Skip if already synced
+            if self._is_already_synced(device, log):
+                synced_count += 1
+                continue
 
-            if code == 200:
-                self.create_log(f"[SUCCESS] [DEVICE: {device.device_id}] {msg} | {log}")
-            else:
-                self.create_log(f"[FAILED] {msg} | {log}")
-                # continue
+            # Try ERP sync
+            success, response = self._push_to_erp(device, log)
+            if success:
+                self._mark_synced(device, log)
+                synced_count += 1
 
-                if not any(err in msg for err in self.allowlisted_errors):
-                    self.create_log(f"[HALT SYNC] Non-Allowlisted ERPNext Error: {msg}")
-                    raise Exception(
-                        "Halting Sync: Non-Allowlisted ERPNext Error")
+        print(f"Synced {synced_count}/{total_logs} logs")
 
-    # ---------------- DEVICE FETCH ---------------- #
-
+        # ✅ Only clear device if ALL logs are synced
+        # if synced_count == total_logs and device.clear_from_device_on_fetch:
+        if device.clear_from_device_on_fetch:
+            print("All logs synced — clearing device:", device.device_id)
+            # self._clear_device(device)
+        else:
+            print("Not clearing device — pending unsynced logs remain")
+            # ------------------------------------------------------------------
+            # FETCH FROM DEVICE
+            # ------------------------------------------------------------------
     def _fetch_from_device(self, device):
-    
-        zk = ZK(device.ip, port=4370, password=device.get_password("device_password"), timeout=30)
+        zk = ZK(device.ip, port=4370, password=device.get_password("device_password"))
         conn = None
-        logs = []
 
         try:
             conn = zk.connect()
             conn.disable_device()
             logs = conn.get_attendance()
-
-            # Convert objects to dict
-            logs = [x.__dict__ for x in logs]
-            self.create_log(
-                f"Fetched {len(logs)} logs from device {device.device_id} ({device.ip})")
-            frappe.cache.set_value(
-                f"{device.device_id}_pull_timestamp", str(datetime.datetime.now()))
-
-            if device.clear_from_device_on_fetch:
-                conn.clear_attendance()
-
-            conn.enable_device()
+            return [l.__dict__ for l in logs]
 
         except Exception as e:
-            self.create_log("ERROR fetching from device:" + device.ip + " " + str(e))
+            self._log(f"[DEVICE ERROR] {device.device_id} → {str(e)}")
+            return []
+
         finally:
             if conn:
+                conn.enable_device()
                 conn.disconnect()
 
-        return logs
+    # ------------------------------------------------------------------
+    # RAW STORAGE (ANTI-DUPLICATE)
+    # ------------------------------------------------------------------
+    def _store_raw_log(self, device, log):
+        if frappe.db.exists(
+            "ZK Raw Attendance",
+            {
+                "device_id": device.device_id,
+                "user_id": log["user_id"],
+                "timestamp": log["timestamp"],
+            },
+        ):
+            return False
+        def serialize(obj):
+            if isinstance(obj, (datetime.datetime, datetime.date)):
+                return obj.isoformat()
+            raise TypeError(f"Type {type(obj)} not serializable")
 
-    # ---------------- PUSH TO ERPNext ---------------- #
+        frappe.get_doc({
+            "doctype": "ZK Raw Attendance",
+            "device_id": device.device_id,
+            "user_id": log["user_id"],
+            "timestamp": log["timestamp"],
+            "punch": log["punch"],
+            "raw_json": json.dumps(log, default=serialize),
+            "synced": 0,
+        }).insert(ignore_permissions=True)
 
-    def _send_to_erpnext(self, user_id, timestamp, device_id, log_type, latitude, longitude):
-        # if self.ERPNEXT_VERSION > 13:
+        return True
 
-        # else:
-        #     from erpnext.hr.doctype.employee_checkin.employee_checkin import add_log_based_on_employee_field
+    # ------------------------------------------------------------------
+    # ERP SYNC
+    # ------------------------------------------------------------------
+    def _push_to_erp(self, device, log):
+        from hrms.hr.doctype.employee_checkin.employee_checkin import (
+            add_log_based_on_employee_field,
+        )
 
-        from hrms.hr.doctype.employee_checkin.employee_checkin import add_log_based_on_employee_field
         try:
-
-            add_log_based_on_employee_field(
-                employee_field_value=user_id,
-                timestamp=str(timestamp),
-                device_id=device_id,
-                log_type=log_type,
-                latitude=latitude,
-                longitude=longitude
+            response = add_log_based_on_employee_field(
+                employee_field_value=log["user_id"],
+                timestamp=str(log["timestamp"]),
+                device_id=device.device_id,
+                log_type=self._resolve_direction(device, log["punch"]),
+                latitude=device.latitude,
+                longitude=device.longitude,
             )
-            response = {
-                'code': 200, 'message': f"Log for user {user_id} at {timestamp} added successfully."}
+            print("Pushing to ERPNext:", response)
+
+            frappe.db.set_value(
+                "ZK Raw Attendance",
+                {
+                    "device_id": device.device_id,
+                    "user_id": log["user_id"],
+                    "timestamp": log["timestamp"],
+                },
+                "synced",
+                1,
+            )
+            return (True, response)
+
         except Exception as e:
-            response = {'code': 500, 'message': str(e)}
+            # print(e)
+            self._log(f"[ERP ERROR] {str(e)}")
+            return (False, str(e))
 
-        self.create_log("ERPNext Response:"+str(response))
-
-        # url = f"{self.ERPNEXT_URL}/api/method/{endpoint_app}.hr.doctype.employee_checkin.employee_checkin.add_log_based_on_employee_field"
-
-        # payload = {
-        #     "employee_field_value": user_id,
-        #     "timestamp": str(timestamp),
-        #     "device_id": device_id,
-        #     "log_type": log_type,
-        #     "latitude": latitude,
-        #     "longitude": longitude
-        # }
-        # print(
-        #     "Payload: ", payload
-        # )
-
-        # headers = {
-        #     "Authorization": f"token {self.ERPNEXT_API_KEY}:{self.ERPNEXT_API_SECRET}",
-        #     "Accept": "application/json"
-        # }
-
-        # r = requests.post(url, json=payload, headers=headers)
-
-        # if r.status_code == 200:
-        #     return 200, r.json()["message"]["name"]
-        # else:
-        #     return r.status_code, self._extract_error(r)
-#
-        # print("Sending to ERPNext:", url)
-        # return response['code'], response['message']
-        return response['code'], response['message']
-
-    # ---------------- SHIFT TIME SYNC ---------------- #
-    def _update_shift_sync(self):
-        for mapping in self.shift_type_device_mapping:
-            for shift in mapping["shift_type_name"] if isinstance(mapping["shift_type_name"], list) else [mapping["shift_type_name"]]:
-                frappe.cache.set_value(
-                    f"{shift}_sync_timestamp", str(datetime.datetime.now()))
-
-    # ---------------- UTILITIES ---------------- #
-
-    def _determine_direction(self, device, punch_value):
+    # ------------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------------
+    def _resolve_direction(self, device, punch):
         if device.punch_direction != "AUTO":
             return device.punch_direction
-        if punch_value in self.device_punch_values_OUT:
-            return "OUT"
-        if punch_value in self.device_punch_values_IN:
+        if punch in self.device_punch_in:
             return "IN"
+        if punch in self.device_punch_out:
+            return "OUT"
         return None
 
-    def _extract_error(self, res):
+    def _clear_device(self, device):
+        print("Clearing device:", device.device_id)
         try:
-            data = res.json()
-            return data.get("exc", str(data))
-        except:
-            return str(res.text)
+            zk = ZK(device.ip, port=4370, password=device.get_password("device_password"))
+            conn = zk.connect()
+            conn.clear_attendance()
+            conn.disconnect()
+        except Exception as e:
+            self._log(f"[CLEAR FAIL] {device.device_id} → {str(e)}")
 
-    def _safe_date(self, s):
-        try:
-            return datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S.%f")
-        except:
-            return None
+    def _log(self, msg):
+        frappe.get_doc({
+            "doctype": "Attendance Device Log",
+            "log_entry": msg,
+            "log_time": datetime.datetime.now(),
+        }).insert(ignore_permissions=True)
 
 
-# ---------------- RUN LOOP ---------------- #
-if __name__ == "__main__":
-    service = AttendanceSyncService()
+    def retry_unsynced_records(self, limit=50):
+        """
+        Retry pushing unsynced attendance records to ERP
+        """
+        print("Retrying unsynced records...")
+        records = frappe.get_all(
+            "ZK Raw Attendance",
+            filters={
+                "synced": 0
+            },
+            fields=["name", "device_id", "user_id", "timestamp", "punch"],
+            limit=limit
+        )
 
-    # print("Service Running...")
-    # while True:
-    service.run_once()
-    # time.sleep(15)
+        if not records:
+            return
+
+        for record in records:
+            try:
+                device = self._get_device(record["device_id"])
+                success, response = self._push_to_erp(
+                    device,
+                    {
+                        "user_id": record["user_id"],
+                        "timestamp": record["timestamp"],
+                        "punch": record["punch"]
+                    }
+                )
+
+                if success:
+                    frappe.db.set_value(
+                        "ZK Raw Attendance",
+                        record["name"],
+                        {
+                            "synced": 1,
+                            "last_attempt_at": frappe.utils.now()
+                        }
+                    )
+                else:
+                    self._mark_retry_failed(record["name"], response)
+
+            except Exception as e:
+                self._mark_retry_failed(record["name"], str(e))
+    def _get_device(self, device_id):
+        for device in self.devices:
+            if device.device_id == device_id:
+                return device
+        raise Exception(f"Device not found for ID: {device_id}")
+    def _mark_retry_failed(self, name, error):
+        current_retry_count = frappe.db.get_value("ZK Raw Attendance", name, "retry_count") or 0
+        if current_retry_count == 3:
+            frappe.publish_realtime(
+                event='msgprint',
+                message=f'Failed to sync attendance record after 3 retries: {name}',
+                user=frappe.session.user
+            )
+        frappe.db.set_value(
+            "ZK Raw Attendance",
+            name,
+            {
+                "retry_count": current_retry_count + 1,
+                "last_error": error,
+                "last_attempt_at": frappe.utils.now()
+            }
+        )
+    def _is_already_synced(self, device, log):
+        return frappe.db.exists(
+            "ZK Raw Attendance",
+            {
+                "device_id": device.device_id,
+                "user_id": log["user_id"],
+                "timestamp": log["timestamp"],
+                "synced": 1
+            }
+        )
+
+    def _mark_synced(self, device, log):
+        frappe.db.set_value(
+            "ZK Raw Attendance",
+            {
+                "device_id": device.device_id,
+                "user_id": log["user_id"],
+                "timestamp": log["timestamp"],
+            },
+            "synced",
+            1,
+        )
+
+# ----------------------------------------------------------------------
+# PUBLIC ENTRY POINT (Scheduler / Button / Cron)
+# ----------------------------------------------------------------------
+def clear_logs():
+	frappe.db.delete("Attendance Device Log")
+	frappe.db.commit()
+
+
+
+@frappe.whitelist()
+def sync_attendance_log_to_erpnext():
+    settings = frappe.get_doc("ZKT Settings")
+
+    service = AttendanceSyncService(
+        devices=settings.get("devices") or [],
+        pull_frequency=settings.get("pull_frequency") or 15,
+    )
+
+
+    service.run()

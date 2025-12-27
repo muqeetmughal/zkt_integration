@@ -244,8 +244,8 @@ required_apps = ["frappe/hrms"]
 
 
 fixtures = [
-    {"dt": "ZKT Settings"
-     },
+    # {"dt": "ZKT Settings"
+    #  },
     {"dt": "Shift Type"
      },
     {"dt": "Server Script"},
