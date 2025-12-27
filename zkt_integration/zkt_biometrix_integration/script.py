@@ -16,26 +16,28 @@ class AttendanceSyncService:
     # ENTRY POINT
     # ------------------------------------------------------------------
     def run(self):
-        last_run = frappe.cache.get_value("attendance_last_run")
-
-        print("Last run:", last_run)
-
-        if last_run:
-            print("Calculating delta since last run...")
-            delta = (datetime.datetime.now() - last_run).total_seconds() / 60
-            print("Delta (minutes):", delta, self.pull_frequency)
-
-
-            if delta < self.pull_frequency:
-                print("Skipping run; pull frequency not met.")
-                return
+        
 
         for device in self.devices:
+            last_run = device.last_run
+
+            if last_run:
+                print("Calculating delta since last run for device:", device.device_id)
+                delta = (datetime.datetime.now() - last_run).total_seconds() / 60
+                print("Delta (minutes):", delta, device.pull_frequency, device.device_id)
+
+
+                if delta < device.pull_frequency:
+                    print("Skipping run; pull frequency not met.")
+                    return
+            print("Device last run:", device.device_id, last_run)
             print("Processing device:", device.device_id)
             self._process_device(device)
+            device.last_run = datetime.datetime.now()
+            device.save(ignore_permissions=True)
         # 🔁 Retry failed records
         self.retry_unsynced_records()
-        frappe.cache.set_value("attendance_last_run", datetime.datetime.now())
+        # frappe.cache.set_value("attendance_last_run", datetime.datetime.now())
 
     # ------------------------------------------------------------------
     # DEVICE PIPELINE
