@@ -45,8 +45,7 @@
    "default": "0",
    "fieldname": "synced",
    "fieldtype": "Check",
-   "label": "Synced",
-   "read_only": 1
+   "label": "Synced"
   },
   {
    "fieldname": "retry_count",
@@ -67,10 +66,10 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-27 15:48:24.893442",
+ "modified": "2025-12-27 16:20:43.015174",
  "modified_by": "Administrator",
  "module": "ZKT Biometrix Integration",
- "name": "ZK Raw Attendance",
+ "name": "ZKT Raw Attendance",
  "owner": "Administrator",
  "permissions": [
   {

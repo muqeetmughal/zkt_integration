@@ -5,32 +5,15 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "pull_frequency",
   "devices",
-  "last_status",
   "shift_type_device_mapping"
  ],
  "fields": [
-  {
-   "default": "60",
-   "description": "In Minutes",
-   "fieldname": "pull_frequency",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Pull Frequency",
-   "reqd": 1
-  },
   {
    "fieldname": "devices",
    "fieldtype": "Table",
    "label": "Devices",
    "options": "ZKT Devices"
-  },
-  {
-   "default": "{}",
-   "fieldname": "last_status",
-   "fieldtype": "JSON",
-   "label": "Status"
   },
   {
    "default": "{}",
@@ -43,7 +26,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-09 03:05:35.292977",
+ "modified": "2025-12-27 16:35:04.879648",
  "modified_by": "Administrator",
  "module": "ZKT Biometrix Integration",
  "name": "ZKT Settings",

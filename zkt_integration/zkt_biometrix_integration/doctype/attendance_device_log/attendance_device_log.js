@@ -3,6 +3,6 @@
 
 // frappe.ui.form.on("Attendance Device Log", {
 // 	refresh(frm) {
-
 // 	},
+
 // });

@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class ZKRawAttendance(Document):
+class ZKTRawAttendance(Document):
 	pass

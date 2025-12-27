@@ -21,29 +21,27 @@ class AttendanceSyncService:
             last_run = device.last_run
 
             if last_run:
-                print("Calculating delta since last run for device:", device.device_id)
+                self._log("Calculating delta since last run for device:" + device.device_id)
                 delta = (datetime.datetime.now() - last_run).total_seconds() / 60
-                print("Delta (minutes):", delta, device.pull_frequency, device.device_id)
+                self._log("Delta (minutes):"+ str(delta) + " Pull Frequency:" + str(device.pull_frequency) + " Device ID:" + device.device_id)
 
 
                 if delta < device.pull_frequency:
-                    print("Skipping run; pull frequency not met.")
+                    self._log("Skipping run; pull frequency not met.")
                     return
-            print("Device last run:", device.device_id, last_run)
-            print("Processing device:", device.device_id)
+            self._log("Device last run: " + device.device_id + " " + str(last_run))
+            self._log("Processing device: " + device.device_id)
             self._process_device(device)
             device.last_run = datetime.datetime.now()
             device.save(ignore_permissions=True)
-        # 🔁 Retry failed records
         self.retry_unsynced_records()
-        # frappe.cache.set_value("attendance_last_run", datetime.datetime.now())
 
     # ------------------------------------------------------------------
     # DEVICE PIPELINE
     # ------------------------------------------------------------------
     def _process_device(self, device):
         logs = self._fetch_from_device(device)
-        print("Fetched logs:", len(logs))
+        self._log("Fetched logs: " + str(len(logs)))
 
         if not logs:
             return
@@ -66,14 +64,14 @@ class AttendanceSyncService:
             if success:
                 self._mark_synced(device, log)
 
-        print(f"Synced {synced_count}/{total_logs} logs")
+        self._log(f"Synced {synced_count}/{total_logs} logs")
 
         # ✅ Only clear device if ALL logs are synced
         if synced_count == total_logs and device.clear_from_device_on_fetch:
-            print("All logs synced — clearing device:", device.device_id)
-            # self._clear_device(device)
+            self._log("All logs synced — clearing device: " + device.device_id)
+            self._clear_device(device)
         else:
-            print("Not clearing device — pending unsynced logs remain")
+            self._log("Not clearing device — pending unsynced logs remain")
             # ------------------------------------------------------------------
             # FETCH FROM DEVICE
             # ------------------------------------------------------------------
@@ -101,7 +99,7 @@ class AttendanceSyncService:
     # ------------------------------------------------------------------
     def _store_raw_log(self, device, log):
         if frappe.db.exists(
-            "ZK Raw Attendance",
+            "ZKT Raw Attendance",
             {
                 "device_id": device.device_id,
                 "user_id": log["user_id"],
@@ -115,7 +113,7 @@ class AttendanceSyncService:
             raise TypeError(f"Type {type(obj)} not serializable")
 
         frappe.get_doc({
-            "doctype": "ZK Raw Attendance",
+            "doctype": "ZKT Raw Attendance",
             "device_id": device.device_id,
             "user_id": log["user_id"],
             "timestamp": log["timestamp"],
@@ -143,10 +141,10 @@ class AttendanceSyncService:
                 latitude=device.latitude,
                 longitude=device.longitude,
             )
-            print("Pushing to ERPNext:", response)
+            self._log("Pushing to ERPNext:", response)
 
             frappe.db.set_value(
-                "ZK Raw Attendance",
+                "ZKT Raw Attendance",
                 {
                     "device_id": device.device_id,
                     "user_id": log["user_id"],
@@ -175,7 +173,7 @@ class AttendanceSyncService:
         return None
 
     def _clear_device(self, device):
-        print("Clearing device:", device.device_id)
+        self._log("Clearing device:", device.device_id)
         try:
             zk = ZK(device.ip, port=4370, password=device.get_password("device_password"))
             conn = zk.connect()
@@ -185,6 +183,7 @@ class AttendanceSyncService:
             self._log(f"[CLEAR FAIL] {device.device_id} → {str(e)}")
 
     def _log(self, msg):
+        print(msg)
         frappe.get_doc({
             "doctype": "Attendance Device Log",
             "log_entry": msg,
@@ -196,9 +195,9 @@ class AttendanceSyncService:
         """
         Retry pushing unsynced attendance records to ERP
         """
-        print("Retrying unsynced records...")
+        self._log("Retrying unsynced records...")
         records = frappe.get_all(
-            "ZK Raw Attendance",
+            "ZKT Raw Attendance",
             filters={
                 "synced": 0
             },
@@ -223,7 +222,7 @@ class AttendanceSyncService:
 
                 if success:
                     frappe.db.set_value(
-                        "ZK Raw Attendance",
+                        "ZKT Raw Attendance",
                         record["name"],
                         {
                             "synced": 1,
@@ -241,7 +240,7 @@ class AttendanceSyncService:
                 return device
         raise Exception(f"Device not found for ID: {device_id}")
     def _mark_retry_failed(self, name, error):
-        current_retry_count = frappe.db.get_value("ZK Raw Attendance", name, "retry_count") or 0
+        current_retry_count = frappe.db.get_value("ZKT Raw Attendance", name, "retry_count") or 0
         if current_retry_count == 3:
             frappe.get_doc({
                 "doctype": "Attendance Device Log",
@@ -249,7 +248,7 @@ class AttendanceSyncService:
                 "log_time": datetime.datetime.now(),
             }).insert(ignore_permissions=True)
         frappe.db.set_value(
-            "ZK Raw Attendance",
+            "ZKT Raw Attendance",
             name,
             {
                 "retry_count": current_retry_count + 1,
@@ -259,7 +258,7 @@ class AttendanceSyncService:
         )
     def _is_already_synced(self, device, log):
         return frappe.db.exists(
-            "ZK Raw Attendance",
+            "ZKT Raw Attendance",
             {
                 "device_id": device.device_id,
                 "user_id": log["user_id"],
@@ -270,7 +269,7 @@ class AttendanceSyncService:
 
     def _mark_synced(self, device, log):
         frappe.db.set_value(
-            "ZK Raw Attendance",
+            "ZKT Raw Attendance",
             {
                 "device_id": device.device_id,
                 "user_id": log["user_id"],
@@ -283,6 +282,7 @@ class AttendanceSyncService:
 # ----------------------------------------------------------------------
 # PUBLIC ENTRY POINT (Scheduler / Button / Cron)
 # ----------------------------------------------------------------------
+@frappe.whitelist()
 def clear_logs():
 	frappe.db.delete("Attendance Device Log")
 	frappe.db.commit()
