@@ -6,9 +6,8 @@ from zk import ZK
 
 class AttendanceSyncService:
 
-    def __init__(self, devices, pull_frequency=15):
+    def __init__(self, devices):
         self.devices = devices or []
-        self.pull_frequency = pull_frequency
         self.device_punch_in = [0, 4]
         self.device_punch_out = [1, 5]
 
@@ -55,23 +54,22 @@ class AttendanceSyncService:
         for log in logs:
             # Always store raw (idempotent)
             self._store_raw_log(device, log)
+            synced_count += 1
 
             # Skip if already synced
             if self._is_already_synced(device, log):
-                synced_count += 1
+                
                 continue
 
             # Try ERP sync
             success, response = self._push_to_erp(device, log)
             if success:
                 self._mark_synced(device, log)
-                synced_count += 1
 
         print(f"Synced {synced_count}/{total_logs} logs")
 
         # ✅ Only clear device if ALL logs are synced
-        # if synced_count == total_logs and device.clear_from_device_on_fetch:
-        if device.clear_from_device_on_fetch:
+        if synced_count == total_logs and device.clear_from_device_on_fetch:
             print("All logs synced — clearing device:", device.device_id)
             # self._clear_device(device)
         else:
@@ -245,11 +243,11 @@ class AttendanceSyncService:
     def _mark_retry_failed(self, name, error):
         current_retry_count = frappe.db.get_value("ZK Raw Attendance", name, "retry_count") or 0
         if current_retry_count == 3:
-            frappe.publish_realtime(
-                event='msgprint',
-                message=f'Failed to sync attendance record after 3 retries: {name}',
-                user=frappe.session.user
-            )
+            frappe.get_doc({
+                "doctype": "Attendance Device Log",
+                "log_entry": f"Max retry attempts reached for record {name}: {error}",
+                "log_time": datetime.datetime.now(),
+            }).insert(ignore_permissions=True)
         frappe.db.set_value(
             "ZK Raw Attendance",
             name,
@@ -296,8 +294,7 @@ def sync_attendance_log_to_erpnext():
     settings = frappe.get_doc("ZKT Settings")
 
     service = AttendanceSyncService(
-        devices=settings.get("devices") or [],
-        pull_frequency=settings.get("pull_frequency") or 15,
+        devices=settings.get("devices") or []
     )
 
 
@@ -316,6 +313,5 @@ def clear_device_logs(device_id):
 
     service = AttendanceSyncService(
         devices=[device],
-        pull_frequency=settings.get("pull_frequency") or 15,
     )
     service._clear_device(device)
