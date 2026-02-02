@@ -26,14 +26,18 @@ class AttendanceSyncService:
                 self._log("Delta (minutes):"+ str(delta) + " Pull Frequency:" + str(device.pull_frequency) + " Device ID:" + device.device_id)
 
 
-                if delta < device.pull_frequency:
+                if delta < device.pull_frequency :
                     self._log("Skipping run; pull frequency not met.")
                     return
             self._log("Device last run: " + device.device_id + " " + str(last_run))
             self._log("Processing device: " + device.device_id)
+
             self._process_device(device)
+
             device.last_run = datetime.datetime.now()
             device.save(ignore_permissions=True)
+            self._log("Before retry unsynced records process *Done") 
+
         self.retry_unsynced_records()
 
     # ------------------------------------------------------------------
@@ -44,15 +48,16 @@ class AttendanceSyncService:
         self._log("Fetched logs: " + str(len(logs)))
 
         if not logs:
+            self._log(f"No logs found from device {device.device_id}")
             return
 
         total_logs = len(logs)
-        synced_count = 0
+        synced_count = 0  # Counting Synced Logs From Device to Zkt Raw Attendence
 
         for log in logs:
             # Always store raw (idempotent)
-            self._store_raw_log(device, log)
-            synced_count += 1
+            if self._store_raw_log(device, log):
+             synced_count += 1  # Counting Synced Logs From Device to Zkt Raw Attendence
 
             # Skip if already synced
             if self._is_already_synced(device, log):
@@ -61,6 +66,7 @@ class AttendanceSyncService:
 
             # Try ERP sync
             success, response = self._push_to_erp(device, log)
+            
             if success:
                 self._mark_synced(device, log)
 
@@ -69,7 +75,7 @@ class AttendanceSyncService:
         # ✅ Only clear device if ALL logs are synced
         if synced_count == total_logs and device.clear_from_device_on_fetch:
             self._log("All logs synced — clearing device: " + device.device_id)
-            self._clear_device(device)
+            # self._clear_device(device)
         else:
             self._log("Not clearing device — pending unsynced logs remain")
             # ------------------------------------------------------------------
@@ -107,6 +113,8 @@ class AttendanceSyncService:
             },
         ):
             return False
+        
+        #converting datetime log object to string for jason dumps
         def serialize(obj):
             if isinstance(obj, (datetime.datetime, datetime.date)):
                 return obj.isoformat()
@@ -125,7 +133,7 @@ class AttendanceSyncService:
         return True
 
     # ------------------------------------------------------------------
-    # ERP SYNC
+    # ERP SYNC  From Device logs After Storing in Raw Zkt Attendence
     # ------------------------------------------------------------------
     def _push_to_erp(self, device, log):
         from hrms.hr.doctype.employee_checkin.employee_checkin import (
@@ -141,18 +149,9 @@ class AttendanceSyncService:
                 latitude=device.latitude,
                 longitude=device.longitude,
             )
-            self._log("Pushing to ERPNext:", response)
-
-            frappe.db.set_value(
-                "ZKT Raw Attendance",
-                {
-                    "device_id": device.device_id,
-                    "user_id": log["user_id"],
-                    "timestamp": log["timestamp"],
-                },
-                "synced",
-                1,
-            )
+            self._log("Pushing to ERPNext:" + str(response))
+            print(response)
+            
             return (True, response)
 
         except Exception as e:
@@ -173,14 +172,16 @@ class AttendanceSyncService:
         return None
 
     def _clear_device(self, device):
-        self._log("Clearing device:", device.device_id)
-        try:
-            zk = ZK(device.ip, port=4370, password=device.get_password("device_password"))
-            conn = zk.connect()
-            conn.clear_attendance()
-            conn.disconnect()
-        except Exception as e:
-            self._log(f"[CLEAR FAIL] {device.device_id} → {str(e)}")
+        self._log("Clear Device Function Currently *Commented")
+
+    #     self._log("Clearing device:" + device.device_id)  # change , to +
+    #     try:
+    #         zk = ZK(device.ip, port=4370, password=device.get_password("device_password"))
+    #         conn = zk.connect()
+    #         conn.clear_attendance()
+    #         conn.disconnect()
+    #     except Exception as e:
+    #         self._log(f"[CLEAR FAIL] {device.device_id} → {str(e)}")
 
     def _log(self, msg):
         print(msg)
@@ -206,6 +207,7 @@ class AttendanceSyncService:
         )
 
         if not records:
+            self._log("All Records Allready marked as *Synced")
             return
 
         for record in records:
@@ -230,15 +232,20 @@ class AttendanceSyncService:
                         }
                     )
                 else:
-                    self._mark_retry_failed(record["name"], response)
+                    self._mark_retry_failed(record["name"], response) #just below at line 247
 
             except Exception as e:
-                self._mark_retry_failed(record["name"], str(e))
+                self._mark_retry_failed(record["name"], str(e)) 
+
+
+    #here we finding device details by device id that fetching from zkt raw att             
     def _get_device(self, device_id):
         for device in self.devices:
             if device.device_id == device_id:
                 return device
         raise Exception(f"Device not found for ID: {device_id}")
+    
+
     def _mark_retry_failed(self, name, error):
         current_retry_count = frappe.db.get_value("ZKT Raw Attendance", name, "retry_count") or 0
         if current_retry_count == 3:
@@ -256,6 +263,8 @@ class AttendanceSyncService:
                 "last_attempt_at": frappe.utils.now()
             }
         )
+
+
     def _is_already_synced(self, device, log):
         return frappe.db.exists(
             "ZKT Raw Attendance",
@@ -288,7 +297,7 @@ def clear_logs():
 	frappe.db.commit()
 
 
-
+#pull logs from device after every hour
 @frappe.whitelist()
 def sync_attendance_log_to_erpnext():
     settings = frappe.get_doc("ZKT Settings")
@@ -314,4 +323,4 @@ def clear_device_logs(device_id):
     service = AttendanceSyncService(
         devices=[device],
     )
-    service._clear_device(device)
+    service._clear_device(device) #Code line 174
