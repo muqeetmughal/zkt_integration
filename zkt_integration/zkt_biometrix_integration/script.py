@@ -78,9 +78,11 @@ class AttendanceSyncService:
             # self._clear_device(device)
         else:
             self._log("Not clearing device — pending unsynced logs remain")
-            # ------------------------------------------------------------------
-            # FETCH FROM DEVICE
-            # ------------------------------------------------------------------
+
+        # ------------------------------------------------------------------
+        # FETCH FROM DEVICE
+        # ------------------------------------------------------------------
+
     def _fetch_from_device(self, device):
         zk = ZK(device.ip, port=4370, password=device.get_password("device_password"))
         conn = None
@@ -94,6 +96,84 @@ class AttendanceSyncService:
         except Exception as e:
             self._log(f"[DEVICE ERROR] {device.device_id} → {str(e)}")
             return []
+
+        finally:
+            if conn:
+                conn.enable_device()
+                conn.disconnect()
+
+    # ------------------------------------------------------------------
+    # Set_users
+    # ------------------------------------------------------------------
+    def _set_user(self, device,**user):
+        zk = ZK(device.ip, port=4370, password=device.get_password("device_password"))
+        conn = None
+
+        try:
+            conn = zk.connect()
+            conn.disable_device()
+            conn.set_user(
+                    uid=int(user.get('uid') or 0),
+                    name=user.get('name') or "Employee",
+                    privilege=int(user.get('privilege') or 0),
+                    password=str(user.get('password') or ""),
+                    group_id=str(user.get('group_id') or ""),
+                    user_id=str(user.get('user_id')or ""),
+                    card=int(user.get('card') or 0)
+                )
+            self._log(f"User {user.get('user_id')} Added Successfull")
+
+
+        except Exception as e:
+            if str(e)=="Can't set user":
+                self._log(f"[DEVICE ERROR] User {user.get('user_id')} already exist → {str(e)}")
+            else:
+             self._log(f"[DEVICE ERROR]  → {str(e)}")
+   
+
+        finally:
+            if conn:
+                conn.enable_device()
+                conn.disconnect()
+
+
+    # ------------------------------------------------------------------
+    # fetch_users_from_device
+    # ------------------------------------------------------------------
+    def _fetch_users_from_device(self, device):
+        zk = ZK(device.ip, port=4370, password=device.get_password("device_password"))
+        conn = None
+
+        try:
+            conn = zk.connect()
+            conn.disable_device()
+            users = conn.get_users()
+            # print(users)
+            total_users=[l.__dict__ for l in users]  #here group id return \x01 
+            return total_users
+
+        except Exception as e:
+            self._log(f"[DEVICE ERROR] {device.device_id} → {str(e)}")
+
+        finally:
+            if conn:
+                conn.enable_device()
+                conn.disconnect()
+
+    # ------------------------------------------------------------------
+    # Delete_users_in_device
+    # ------------------------------------------------------------------
+    def _delete_users_from_device(self, device,user_id):
+        zk = ZK(device.ip, port=4370, password=device.get_password("device_password"))
+        conn = None
+
+        try:
+            conn = zk.connect()
+            conn.disable_device()
+            conn.delete_user(user_id=str(user_id))
+ 
+        except Exception as e:
+            self._log(f"[DEVICE ERROR]  {user_id} → {str(e)}")
 
         finally:
             if conn:
@@ -324,3 +404,46 @@ def clear_device_logs(device_id):
         devices=[device],
     )
     service._clear_device(device) #Code line 174
+
+# Fetching users from device
+
+@frappe.whitelist()
+def get_users():
+    settings = frappe.get_doc("ZKT Settings")
+
+    service = AttendanceSyncService(
+        devices=settings.get("devices") or []
+    )
+
+    all_users = []
+
+
+    for device in service.devices:
+        users = service._fetch_users_from_device(device)
+        all_users.extend(users)
+
+    return all_users
+
+
+@frappe.whitelist()
+def delete_user_from_device(user_id):
+    settings = frappe.get_doc("ZKT Settings")
+
+    service = AttendanceSyncService(
+    devices=settings.get("devices") or []
+    )
+    for device in service.devices:
+        service._delete_users_from_device(device,user_id)
+
+@frappe.whitelist()
+def set_user(**user):
+    settings = frappe.get_doc("ZKT Settings")
+
+    service = AttendanceSyncService(
+    devices=settings.get("devices") or []
+    )
+    for device in service.devices:
+        service._set_user(device,**user)
+
+
+

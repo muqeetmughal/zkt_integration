@@ -1,0 +1,95 @@
+{
+ "actions": [],
+ "autoname": "format:{employee_name}-{attendance_device_id}",
+ "creation": "2026-02-02 18:30:09.737207",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "attendance_device_id",
+  "uid",
+  "group_id",
+  "privilege",
+  "column_break_rbxn",
+  "employee_name",
+  "password",
+  "card"
+ ],
+ "fields": [
+  {
+   "fieldname": "attendance_device_id",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Attendance Device ID",
+   "non_negative": 1,
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_rbxn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee Name",
+   "options": "Employee",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "uid",
+   "fieldtype": "Int",
+   "label": "UID"
+  },
+  {
+   "fieldname": "group_id",
+   "fieldtype": "Data",
+   "label": "Group ID"
+  },
+  {
+   "fieldname": "password",
+   "fieldtype": "Data",
+   "label": "Password"
+  },
+  {
+   "fieldname": "card",
+   "fieldtype": "Data",
+   "label": "Card"
+  },
+  {
+   "fieldname": "privilege",
+   "fieldtype": "Data",
+   "label": "Privilege"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_virtual": 1,
+ "links": [],
+ "modified": "2026-02-04 01:19:36.906552",
+ "modified_by": "Administrator",
+ "module": "ZKT Biometrix Integration",
+ "name": "ZKT Device User",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
